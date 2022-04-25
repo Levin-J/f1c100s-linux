@@ -78,6 +78,13 @@ config RTW88_8723DE
 
 	  802.11n PCIe wireless network adapter
 
+config RTW88_8723DS
+	tristate "Realtek 8723DS SDIO wireless network adapter"
+	depends on MMC
+	select RTW88_CORE
+	select RTW88_SDIO
+	select RTW88_8723D
+
 config RTW88_8821CE
 	tristate "Realtek 8821CE PCI wireless network adapter"
 	depends on PCI
