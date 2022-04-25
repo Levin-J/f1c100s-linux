@@ -41,6 +41,13 @@ struct rtw8723de_efuse {
 	u8 sub_device_id[2];
 };
 
+struct rtw8723ds_efuse {
+	u8 res0[0x8];			/* 0x00 */
+	u8 voltage;			/* 0x08 */
+	u8 res1[0x41];			/* 0x09 */
+	u8 mac_addr[ETH_ALEN];		/* 0x11a */
+};
+
 struct rtw8723d_efuse {
 	__le16 rtl_id;
 	u8 rsvd[2];
@@ -69,7 +76,10 @@ struct rtw8723d_efuse {
 	u8 rfe_option;
 	u8 country_code[2];
 	u8 res[3];
-	struct rtw8723de_efuse e;
+	union {
+		struct rtw8723de_efuse e;
+		struct rtw8723ds_efuse s;
+	};
 };
 
 /* phy status page0 */
