@@ -267,6 +267,14 @@ config ZYNQMP_IPI_MBOX
 	  message to the IPI buffer and will access the IPI control
 	  registers to kick the other processor or enquire status.
 
+config PHYTIUM_MBOX
+	tristate "Phytium Mailbox"
+	depends on ACPI && (ARCH_PHYTIUM || COMPILE_TEST)
+	help
+	  Say yes here to add support for Phytium mailbox driver.
+	  This mail box driver is used to access the SCPI interface
+	  provided by firmwares.
+
 config SUN6I_MSGBOX
 	tristate "Allwinner sun6i/sun8i/sun9i/sun50i Message Box"
 	depends on ARCH_SUNXI || COMPILE_TEST
