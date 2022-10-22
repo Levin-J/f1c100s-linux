@@ -35,6 +35,8 @@
 #include "../pci.h"
 
 #define PCIE_BASIC_STATUS		0x018
+#define PCIE_PCI_IDS_1			0x09c
+#define PCIE_BAR_WIN			0x0fc
 #define PCIE_CFGNUM			0x140
 #define IMASK_LOCAL			0x180
 #define ISTATUS_LOCAL			0x184
@@ -65,6 +67,8 @@
 #define PLDA_FUNCTION_DIS		BIT(15)
 #define PLDA_FUNC_NUM			4
 #define PLDA_PHY_FUNC_SHIFT		9
+#define PLDA_PREFETCH_WIN64_ENABLE	BIT(3)
+#define PLDA_PREFETCH_WIN_ENABLE	BIT(2)
 
 #define XR3PCI_ATR_AXI4_SLV0		0x800
 #define XR3PCI_ATR_SRC_ADDR_LOW		0x0
@@ -251,6 +255,9 @@ static int plda_pcie_config_read(struct pci_bus *bus, unsigned int devfn,
 				 int where, int size, u32 *value)
 {
 	struct plda_pcie *pcie = bus->sysdata;
+
+	if (plda_pcie_hide_rc_bar(bus, devfn, where))
+		return PCIBIOS_BAD_REGISTER_NUMBER;
 
 	return _plda_pcie_config_read(pcie, bus->number, devfn, where, size,
 				      value);
@@ -824,12 +831,13 @@ static void plda_pcie_hw_init(struct plda_pcie *pcie)
 	plda_pcie_setup_windows(pcie);
 
 	/* Ensure that PERST has been asserted for at least 100 ms */
-	msleep(300);
+	msleep(100);
 	if (pcie->perst_state_def) {
 		ret = pinctrl_select_state(pcie->pinctrl, pcie->perst_state_def);
 		if (ret)
 			dev_err(dev, "Cannot set reset pin to high\n");
 	}
+	msleep(100);
 }
 
 static int plda_pcie_is_link_up(struct plda_pcie *pcie)
@@ -932,6 +940,10 @@ static int plda_pcie_probe(struct platform_device *pdev)
 
 	if (plda_pcie_is_link_up(pcie) == PLDA_LINK_DOWN)
 		goto release;
+
+	/* Enable 64-bit pref window */
+	writel(PLDA_PREFETCH_WIN_ENABLE | PLDA_PREFETCH_WIN64_ENABLE,
+	       pcie->reg_base + PCIE_BAR_WIN);
 
 	ret = pci_host_probe(bridge);
 	if (ret < 0) {
