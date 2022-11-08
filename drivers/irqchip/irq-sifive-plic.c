@@ -67,6 +67,7 @@ struct plic_priv {
 	struct irq_domain *irqdomain;
 	void __iomem *regs;
 	unsigned long plic_quirks;
+	u32 interrupt_cells;
 };
 
 struct plic_handler {
@@ -208,7 +209,7 @@ static int plic_irq_set_type(struct irq_data *d, unsigned int type)
 {
 	struct plic_priv *priv = irq_data_get_irq_chip_data(d);
 
-	if (!test_bit(PLIC_QUIRK_EDGE_INTERRUPT, &priv->plic_quirks))
+	if (priv->interrupt_cells < 2)
 		return IRQ_SET_MASK_OK_NOCOPY;
 
 	switch (type) {
@@ -246,7 +247,7 @@ static int plic_irq_domain_translate(struct irq_domain *d,
 {
 	struct plic_priv *priv = d->host_data;
 
-	if (test_bit(PLIC_QUIRK_EDGE_INTERRUPT, &priv->plic_quirks))
+	if (priv->interrupt_cells >= 2)
 		return irq_domain_translate_twocell(d, fwspec, hwirq, type);
 
 	return irq_domain_translate_onecell(d, fwspec, hwirq, type);
@@ -357,6 +358,10 @@ static int __init __plic_init(struct device_node *node,
 	}
 
 	error = -EINVAL;
+	of_property_read_u32(node, "#interrupt-cells", &priv->interrupt_cells);
+	if (WARN_ON(!priv->interrupt_cells))
+		goto out_iounmap;
+
 	of_property_read_u32(node, "riscv,ndev", &nr_irqs);
 	if (WARN_ON(!nr_irqs))
 		goto out_iounmap;
@@ -479,12 +484,5 @@ static int __init plic_init(struct device_node *node,
 
 IRQCHIP_DECLARE(sifive_plic, "sifive,plic-1.0.0", plic_init);
 IRQCHIP_DECLARE(riscv_plic0, "riscv,plic0", plic_init); /* for legacy systems */
-
-static int __init plic_edge_init(struct device_node *node,
-				 struct device_node *parent)
-{
-	return __plic_init(node, parent, BIT(PLIC_QUIRK_EDGE_INTERRUPT));
-}
-
-IRQCHIP_DECLARE(andestech_nceplic100, "andestech,nceplic100", plic_edge_init);
-IRQCHIP_DECLARE(thead_c900_plic, "thead,c900-plic", plic_edge_init);
+IRQCHIP_DECLARE(andestech_nceplic100, "andestech,nceplic100", plic_init);
+IRQCHIP_DECLARE(thead_c900_plic, "thead,c900-plic", plic_init);
